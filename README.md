@@ -12,7 +12,7 @@ Before removing the connection from the pool, a write lock must be obtained on t
 
 The sample program `SimpleQuery.go` opens a connection, calls `QueryContext` to obtain a `Rows` object, keeps the first `Rows` object open, then calls `QueryContext` a second time. The fake driver returns `ErrBadConn` from the second call to `QueryContext`, which provkes a deadlock in the Go `sql` package connection pool logic.
 
-The Go `sql` package connection pool logic will deadlock whenever the `QueryContext` returns `ErrBadConn` and there are two or more open `Rows` objects for a connection. Since an application cannot anticipate when a network communication failure might occur and cause the driver to return `ErrBadConn`, an application is effectively limited to using only one `Rows` object at a time for a connection in order to avoid deadlock.
+The Go `sql` package connection pool logic will deadlock whenever the `QueryContext` method returns `ErrBadConn` and there are two or more open `Rows` objects for a connection. To avoid deadlock, an application is effectively limited to using only one `Rows` object at a time for a connection, since an application cannot anticipate when a network communication failure might occur and cause the driver to return `ErrBadConn`.
 
 ### How to run
 ```
