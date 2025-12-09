@@ -1,6 +1,6 @@
 ## Fake Go SQL Driver and Sample Program
 
-This fake Go SQL driver and sample program demonstrates Go `sql` package connection pool deadlock when `QueryContext` returns `driver.ErrBadConn`.
+This fake Go SQL driver and sample program together demonstrate Go `sql` package connection pool deadlock when `QueryContext` returns `driver.ErrBadConn`.
 
 A `database/sql.Conn` connection object has a `closemu` field of type `sync.RWMutex`.
 * Before a `Conn` object is closed, a write lock is acquired on its `closemu`.
@@ -9,6 +9,10 @@ A `database/sql.Conn` connection object has a `closemu` field of type `sync.RWMu
 When a driver returns `driver.ErrBadConn` from the `QueryContext` method, as part of the post-processing of the result from the driver, before returning to the application, the Go `sql` package connection pool tries to close the parent connection and remove the connection from its connection pool.
 
 Before removing the connection from the pool, a write lock must be obtained on the connection's `closemu`. If there are any outstanding child `Rows` objects, the attempt to acquire a write lock on `closemu` will deadlock. The deadlock situation will cause a hang if undetected by the Go runtime, or cause a panic if detected by the Go runtime.
+
+The sample program `SimpleQuery.go` opens a connection, calls `QueryContext` to obtain a `Rows` object, keeps the first `Rows` object open, then calls `QueryContext` a second time. The fake driver returns `ErrBadConn` from the second call to `QueryContext`, which provkes a deadlock in the Go `sql` package connection pool logic.
+
+The Go `sql` package connection pool logic will deadlock whenever the `QueryContext` returns `ErrBadConn` and there are two or more open `Rows` objects for a connection. Since an application cannot anticipate when a network communication failure might occur and cause the driver to return `ErrBadConn`, an application is effectively limited to using only one `Rows` object at a time for a connection in order to avoid deadlock.
 
 ### How to run
 ```
